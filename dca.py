@@ -23,18 +23,17 @@ class StopBot:
 
 class Exchange:
     """
-    Base class to interact with exchanges. Each exchange has its own
+    Generic class to interact with exchanges. Each exchange has its own
     method to build the client, so take that into account when
     building the exchange object.
     """
 
-    def __init__(self, name, args) -> None:
-        exchange_keys = {"apiKey": args["apiKey"], "secret": args["secret"]}
+    def __init__(self, name, keys={}, test=True) -> None:
         exchange_class = getattr(ccxt, name)
-        self.exchange = exchange_class(exchange_keys)
-        self.exchange.set_sandbox_mode(True)
+        self.exchange = exchange_class(keys)
+        self.exchange.set_sandbox_mode(test)
 
-    def get_balance(self) -> dict:
+    def get_balances(self) -> dict:
         return self.exchange.fetch_balance()
 
     def get_price(self, pairs: list) -> dict:
@@ -50,6 +49,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--strategy", required=True, help="The strategy to run")
     parser.add_argument("--keys", required=True, help="Exchange API keys")
+    parser.add_argument("--test", default=False, action="store_true")
 
     args = parser.parse_args()
 
@@ -61,12 +61,12 @@ if __name__ == "__main__":
         keys = yaml.load(f, Loader=SafeLoader)
 
     exchanges = [
-        Exchange(name=exchange, args=keys[exchange])
+        Exchange(name=exchange, keys=keys[exchange], test=args.test)
         for exchange in strategy["strategy"][0]["exchanges"]
     ]
     # Here we start processing our strategies based on the
     # configured period.
     bot = StopBot()
     while not bot.is_stopped:
-        usd = exchanges[0].get_balance()
+        usd = exchanges[0].get_balances()
         time.sleep(ONE_SECOND)

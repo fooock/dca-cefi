@@ -10,8 +10,8 @@ strategy:
     amount: 50
     # Base currency used to apply this stragety. This is used in conjunction
     # with the list of assets. For example in this case, we are going to use
-    # the book BTCUSD.
-    base_asset: usd
+    # the book BTCUSDT.
+    quote_asset: usdt
     assets:
       - btc
     # Exchanges used to run this strategy
