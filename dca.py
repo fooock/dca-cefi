@@ -39,8 +39,13 @@ class Exchange:
     def get_price(self, pairs: list) -> dict:
         return self.exchange.fetch_tickers(pairs)
 
-    def buy(self, pair: str, position: float):
-        pass
+    def buy(self, pair: str, amount: float):
+        """
+        Creates a market buy order for the amount of the specified pair
+        """
+        return self.exchange.create_order(
+            symbol=pair, type="market", side="buy", amount=amount
+        )
 
 
 if __name__ == "__main__":
