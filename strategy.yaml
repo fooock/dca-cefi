@@ -1,0 +1,20 @@
+strategy:
+
+    # Period used to do the investment. You can use here any
+    # cronjob expression.
+  - period: monthly
+    # Amount to invest per `period` by each `asset` and `exchange`.
+    # For example, if you want to apply this strategy, then you are going
+    # to invest 100$ in total since this strategy is applied in two 
+    # exchanges.
+    amount: 50
+    # Base currency used to apply this stragety. This is used in conjunction
+    # with the list of assets. For example in this case, we are going to use
+    # the book BTCUSD.
+    base_asset: usd
+    assets:
+      - btc
+    # Exchanges used to run this strategy
+    exchanges:
+      - bitso
+      - kraken
