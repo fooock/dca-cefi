@@ -16,5 +16,4 @@ strategy:
       - btc
     # Exchanges used to run this strategy
     exchanges:
-      - bitso
-      - kraken
+      - binance
