@@ -8,6 +8,10 @@ from tenacity import RetryError, stop_after_attempt, wait_fixed
 from yaml.loader import SafeLoader
 
 
+NUMBER_OF_NETWORK_ATTEMPTS = 5
+RETRY_WAIT_TIME_SECONDS = 1
+
+
 class Strategy:
     """
     Generic class to create DCA strategies.
@@ -45,26 +49,57 @@ class Exchange:
         self.exchange.set_sandbox_mode(test)
 
     def get_balances(self) -> dict:
-        return self.exchange.fetch_balance()
+        """
+        Retrieve account balance.
+
+        This method will be retried if the operation fails with any exception.
+        The logic is to try to retry the operation up to five times waiting
+        a fixed amount of time of one second.
+        """
+        for attempt in tenacity.Retrying(
+            stop=stop_after_attempt(NUMBER_OF_NETWORK_ATTEMPTS),
+            wait=wait_fixed(RETRY_WAIT_TIME_SECONDS),
+        ):
+            with attempt:
+                logging.info(
+                    f"#{attempt.retry_state.attempt_number} Trying to retrieve account balance"
+                )
+                return self.exchange.fetch_balance()
 
     def get_price(self, pair: str) -> dict:
-        return self.exchange.fetch_ticker(pair)
+        """
+        Retrieve the ticker price for the given.
+
+        This method will be retried if the operation fails with any exception.
+        The logic is to try to retry the operation up to five times waiting
+        a fixed amount of time of one second.
+        """
+        for attempt in tenacity.Retrying(
+            stop=stop_after_attempt(NUMBER_OF_NETWORK_ATTEMPTS),
+            wait=wait_fixed(RETRY_WAIT_TIME_SECONDS),
+        ):
+            with attempt:
+                logging.info(
+                    f"#{attempt.retry_state.attempt_number} Trying to retrieve ticker for symbol {pair}"
+                )
+                return self.exchange.fetch_ticker(pair)
 
     def buy(self, pair: str, amount: float) -> dict:
         """
         Creates a market buy order for the amount of the specified pair.
+
         This method will be retried if the operation fails with any exception.
-        The logic is to try to retry the operation up to five times waiting a fixed
-        amount of time of one second.
+        The logic is to try to retry the operation up to five times waiting
+        a fixed amount of time of one second.
         """
         for attempt in tenacity.Retrying(
-            stop=stop_after_attempt(5), wait=wait_fixed(1)
+            stop=stop_after_attempt(NUMBER_OF_NETWORK_ATTEMPTS),
+            wait=wait_fixed(RETRY_WAIT_TIME_SECONDS),
         ):
             with attempt:
                 logging.info(
                     f"#{attempt.retry_state.attempt_number} Trying to create order for symbol {pair} and amount {amount}"
                 )
-                raise Exception()
                 return self.exchange.create_order(
                     symbol=pair, type="market", side="buy", amount=amount
                 )
@@ -88,7 +123,13 @@ class Runner:
 
     def run(self, strategy: Strategy, exchange: Exchange):
         # Retrieve balances in order to execute this strategy
-        balances = exchange.get_balances()
+        try:
+            balances = exchange.get_balances()
+        except RetryError:
+            logging.error(
+                f"Unable to retrieve account balance for exchange {exchange.name} ('{strategy}')"
+            )
+            return
         quote_balance = balances[strategy.base_asset]["free"]
         logging.info(
             f"Available balance in {exchange.name} for '{strategy}' is {quote_balance} {strategy.base_asset}"
@@ -124,7 +165,13 @@ class Runner:
         for pair in order_pairs_to_create:
             # Retrieve ticker price for the current pair in order
             # to calculate the amount of unots to buy.
-            ticker = exchange.get_price(pair)
+            try:
+                ticker = exchange.get_price(pair)
+            except RetryError:
+                logging.error(
+                    f"Unable to retrieve ticker for symbol {pair} in exchange {exchange.name} ('{strategy}')"
+                )
+                return
             logging.info(
                 f"Ask price for {pair} is {ticker['ask']} {strategy.base_asset}"
             )
@@ -139,7 +186,7 @@ class Runner:
                 orders.append(order)
             except RetryError:
                 logging.error(
-                    f"Unable to create order for symbol {pair} with amount {amount_to_buy} ('{strategy}')"
+                    f"Unable to create order for symbol {pair} with amount {amount_to_buy} in exchange {exchange.name} ('{strategy}')"
                 )
                 return
 

@@ -5,5 +5,6 @@ strategy:
     base_asset: usdt
     assets:
       - btc
+      - eth
     exchanges:
       - binance
