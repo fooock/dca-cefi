@@ -78,7 +78,7 @@ Our bot will execute two strategies in paralell. The first one:
 | `assets`     	| `BTC`, `ETH`                                       |
 | `exchanges`  	| `binance`                              	|
 
-In total this first strategy will use `100 USDT` to buy `BTC` and `ETH` from Binance.
+In total this first strategy will use a total of `100 USDT` to buy `BTC` and `ETH` from Binance (`50` each one).
 
 The second strategy:
 
@@ -89,7 +89,7 @@ The second strategy:
 | `assets`     	| `BTC`                                       |
 | `exchanges`  	| `bitso`                              	|
 
-In total this second strategy will use `20 BUSD` to buy `BTC` from Bitso. 
+In total this second strategy will use a total of `20 BUSD` to buy `BTC` from Bitso. 
 
 >Note that our strategy will interact with two exchanges, so we need to create the required API keys and
 >secrets to be able to recover information from our account.
