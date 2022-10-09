@@ -122,6 +122,9 @@ class StrategyRunner:
     Runner to execute strategies.
     """
 
+    def __init__(self, no_balance_available_callback=None) -> None:
+        self.no_balance_available_callback = no_balance_available_callback
+
     def run(self, strategy: Strategy, exchange: Exchange):
         # Retrieve balances in order to execute this strategy
         try:
@@ -141,6 +144,11 @@ class StrategyRunner:
             logging.warning(
                 f"We can't execute '{strategy}' since available funds are {quote_balance} and required amount is {strategy.amount}"
             )
+            # Use our callback to do operations when this happens
+            if self.no_balance_available_callback is not None:
+                self.no_balance_available_callback(
+                    exchange.name, quote_balance, strategy.amount, strategy.base_asset
+                )
             return
         # If we have more than one pair, then we need to check if we have the required available
         # balance to fill all pair orders.
@@ -195,6 +203,17 @@ class StrategyRunner:
         logging.info(f"Created {len(orders)} orders for '{strategy}'")
 
 
+def no_balance_available(exchange: str, current: float, expected: float, asset: str):
+    """
+    Callback to be notified when no funds are available in the strategy exchange.
+    This can be used to send email/telegram notification and top-up the exchange
+    account with more funds.
+    """
+    logging.error(
+        f"Exchange {exchange} has {current} {asset} but expected {expected} {asset}"
+    )
+
+
 if __name__ == "__main__":
 
     # Configure basic logger
@@ -242,7 +261,7 @@ if __name__ == "__main__":
     exchanges = list(set(exchanges))
     logging.info(f"Created {len(exchanges)} exchanges: {exchanges}")
 
-    runner = StrategyRunner()
+    runner = StrategyRunner(no_balance_available_callback=no_balance_available)
     with ThreadPoolExecutor(max_workers=5) as executor:
         for strategy in strategies:
             for exchange in exchanges:
