@@ -33,18 +33,7 @@ $ source dca-cefi-env/bin/activate
 (dca-cefi-env) $ pip install -r requirements.txt
 ```
 
-You can see the bot functionality by executing it using `-h`:
-
-```sh
-(dca-cefi-env) $ python dca.py -h
-usage: dca.py [-h] --strategy STRATEGY --keys KEYS [--test]
-
-optional arguments:
-  -h, --help           show this help message and exit
-  --strategy STRATEGY  The strategy to run
-  --keys KEYS          Exchange API keys
-  --test
-```
+You can see the bot functionality by executing the following command `python dca.py -h`:
 
 ## How it works?
 
