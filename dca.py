@@ -41,6 +41,10 @@ class Exchange:
     Generic class to interact with exchanges. Each exchange has its own
     method to build the client, so take that into account when
     building the exchange object.
+
+    All methods from this class will be retried if the operation fails with any exception.
+    The logic is to try to retry the operation up to five times waiting
+    a fixed amount of time of one second.
     """
 
     def __init__(self, name, keys={}, test=True) -> None:
@@ -52,10 +56,6 @@ class Exchange:
     def get_balances(self) -> dict:
         """
         Retrieve account balance.
-
-        This method will be retried if the operation fails with any exception.
-        The logic is to try to retry the operation up to five times waiting
-        a fixed amount of time of one second.
         """
         for attempt in tenacity.Retrying(
             stop=stop_after_attempt(NUMBER_OF_NETWORK_ATTEMPTS),
@@ -70,10 +70,6 @@ class Exchange:
     def get_price(self, pair: str) -> dict:
         """
         Retrieve the ticker price for the given.
-
-        This method will be retried if the operation fails with any exception.
-        The logic is to try to retry the operation up to five times waiting
-        a fixed amount of time of one second.
         """
         for attempt in tenacity.Retrying(
             stop=stop_after_attempt(NUMBER_OF_NETWORK_ATTEMPTS),
@@ -88,10 +84,6 @@ class Exchange:
     def buy(self, pair: str, amount: float) -> dict:
         """
         Creates a market buy order for the amount of the specified pair.
-
-        This method will be retried if the operation fails with any exception.
-        The logic is to try to retry the operation up to five times waiting
-        a fixed amount of time of one second.
         """
         for attempt in tenacity.Retrying(
             stop=stop_after_attempt(NUMBER_OF_NETWORK_ATTEMPTS),
@@ -198,7 +190,8 @@ class StrategyRunner:
                 logging.error(
                     f"Unable to create order for symbol {pair} with amount {amount_to_buy} in exchange {exchange.name} ('{strategy}')"
                 )
-                return
+                # Continue with the next pair
+                continue
 
         logging.info(f"Created {len(orders)} orders for '{strategy}'")
 
