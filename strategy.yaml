@@ -1,16 +1,18 @@
 strategy:
 
-    # Amount to invest per `period` by each `asset` and `exchange`.
-    # For example, if you want to apply this strategy, then you are going
-    # to invest 100$ in total since this strategy is applied in two 
-    # exchanges.
+    # Amount to invest by each `asset` and `exchange`.
   - amount: 50
-    # Base currency used to apply this stragety. This is used in conjunction
-    # with the list of assets. For example in this case, we are going to use
-    # the book BTCUSDT.
     quote_asset: usdt
     assets:
       - btc
-    # Exchanges used to run this strategy
+    exchanges:
+      - binance
+
+    # Amount to invest by each `asset` and `exchange`.
+  - amount: 10000
+    quote_asset: usdt
+    assets:
+      - eth
+      - ltc
     exchanges:
       - binance
