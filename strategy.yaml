@@ -1,7 +1,6 @@
 strategy:
-
     # Amount to invest by each `asset` and `exchange`.
-  - amount: 50000
+  - amount: 50
     base_asset: usdt
     assets:
       - btc
