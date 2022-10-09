@@ -18,22 +18,15 @@ contain the following info:
 
 ## Install
 
-In order to run the script, first you need to install the required dependencies that can be found in
-the [`requirements.txt`](requirements.txt) file. It is recommended to do this process in a virtual
-environment.
+The best way to run this script is by using Docker. Just pull the image and run it with 
+your own strategy and exchange keys:
 
 ```sh
-$ python3 -m venv dca-cefi-env
+docker pull fooock/dca-cefi:latest
+docker run -v $(pwd):/app:ro fooock/dca-cefi --strategy strategy.yaml --keys keys.yaml --test
 ```
 
-When done, activate it and install:
-
-```sh
-$ source dca-cefi-env/bin/activate
-(dca-cefi-env) $ pip install -r requirements.txt
-```
-
-You can see the bot functionality by executing the following command `python dca.py -h`:
+>It is super important to mount the directory where your strategy and keys are located.
 
 ## How it works?
 
