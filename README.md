@@ -1,6 +1,6 @@
-# Crypto `DCA` bot
+# Cryptocurrency `DCA` bot
 
->Dollar cost averaging bot.
+>Dollar cost averaging bot for centralized exchanges.
 
 This is a simple script to buy fixed amounts of some cryptocurrency assets in your preferred
 exchanges. You can run multiple strategies using the same bot.
