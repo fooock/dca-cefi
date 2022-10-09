@@ -1,8 +1,10 @@
 import argparse
 import ccxt
 import logging
+import tenacity
 import yaml
 
+from tenacity import RetryError, stop_after_attempt, wait_fixed
 from yaml.loader import SafeLoader
 
 
@@ -11,19 +13,19 @@ class Strategy:
     Generic class to create DCA strategies.
     """
 
-    def __init__(self, amount, quote_asset, assets, exchanges) -> None:
+    def __init__(self, amount, base_asset, assets, exchanges) -> None:
         self.amount = amount
-        self.quote_asset = quote_asset
+        self.base_asset = base_asset
         self.assets = assets
         self.exchanges = exchanges
 
     def get_pairs(self):
         """
         Retrieve array of pairs used to run the strategy. All pairs have the same quote
-        `quote_asset`, so for example, for a list of assets of `[btc, eth]` and `usdt` as a quote
+        `base_asset`, so for example, for a list of assets of `[btc, eth]` and `usdt` as a quote
         asset, this will return the following content `["usdt/btc", "usdt/eth"]`
         """
-        return ["{}/{}".format(self.quote_asset, base) for base in self.assets]
+        return ["{}/{}".format(quote, self.base_asset) for quote in self.assets]
 
     def __str__(self) -> str:
         return f"strategy-{self.amount}"
@@ -45,16 +47,27 @@ class Exchange:
     def get_balances(self) -> dict:
         return self.exchange.fetch_balance()
 
-    def get_price(self, pairs: list) -> dict:
-        return self.exchange.fetch_tickers(pairs)
+    def get_price(self, pair: str) -> dict:
+        return self.exchange.fetch_ticker(pair)
 
-    def buy(self, pair: str, amount: float):
+    def buy(self, pair: str, amount: float) -> dict:
         """
-        Creates a market buy order for the amount of the specified pair
+        Creates a market buy order for the amount of the specified pair.
+        This method will be retried if the operation fails with any exception.
+        The logic is to try to retry the operation up to five times waiting a fixed
+        amount of time of one second.
         """
-        return self.exchange.create_order(
-            symbol=pair, type="market", side="buy", amount=amount
-        )
+        for attempt in tenacity.Retrying(
+            stop=stop_after_attempt(5), wait=wait_fixed(1)
+        ):
+            with attempt:
+                logging.info(
+                    f"#{attempt.retry_state.attempt_number} Trying to create order for symbol {pair} and amount {amount}"
+                )
+                raise Exception()
+                return self.exchange.create_order(
+                    symbol=pair, type="market", side="buy", amount=amount
+                )
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Exchange):
@@ -76,9 +89,9 @@ class Runner:
     def run(self, strategy: Strategy, exchange: Exchange):
         # Retrieve balances in order to execute this strategy
         balances = exchange.get_balances()
-        quote_balance = balances[strategy.quote_asset]["free"]
+        quote_balance = balances[strategy.base_asset]["free"]
         logging.info(
-            f"Available balance in {exchange.name} for '{strategy}' is {quote_balance} {strategy.quote_asset}"
+            f"Available balance in {exchange.name} for '{strategy}' is {quote_balance} {strategy.base_asset}"
         )
         # We are unable to execute the strategy because we don't have available
         # balance.
@@ -91,7 +104,7 @@ class Runner:
         # balance to fill all pair orders.
         strategy_total_amount = strategy.amount * len(strategy.get_pairs())
         logging.info(
-            f"Required amount to execute '{strategy}' is {strategy_total_amount} {strategy.quote_asset} for pair {strategy.get_pairs()}"
+            f"Required amount to execute '{strategy}' is {strategy_total_amount} {strategy.base_asset} for pair {strategy.get_pairs()}"
         )
         order_pairs_to_create = []
         aux_balance = 0
@@ -107,6 +120,30 @@ class Runner:
                 f"Partialy execute '{strategy}' for pairs {order_pairs_to_create} (originaly {strategy.get_pairs()})"
             )
         # Lets go to create orders
+        orders = []
+        for pair in order_pairs_to_create:
+            # Retrieve ticker price for the current pair in order
+            # to calculate the amount of unots to buy.
+            ticker = exchange.get_price(pair)
+            logging.info(
+                f"Ask price for {pair} is {ticker['ask']} {strategy.base_asset}"
+            )
+            amount_to_buy = "{:.8f}".format(strategy.amount / ticker["ask"])
+
+            # Try to create the buy order
+            try:
+                order = order = exchange.buy(pair, amount_to_buy)
+                logging.info(
+                    f"Order {order['id']} / symbol {pair} / amount {amount_to_buy} / price {order['price']} / status {order['status']}"
+                )
+                orders.append(order)
+            except RetryError:
+                logging.error(
+                    f"Unable to create order for symbol {pair} with amount {amount_to_buy} ('{strategy}')"
+                )
+                return
+
+        logging.info(f"Created {len(orders)} orders for '{strategy}'")
 
 
 if __name__ == "__main__":
@@ -135,7 +172,7 @@ if __name__ == "__main__":
     strategies = [
         Strategy(
             amount=int(strategy["amount"]),
-            quote_asset=strategy["quote_asset"].upper(),
+            base_asset=strategy["base_asset"].upper(),
             assets=[asset.upper() for asset in strategy["assets"]],
             exchanges=strategy["exchanges"],
         )

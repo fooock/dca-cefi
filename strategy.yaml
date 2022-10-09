@@ -2,17 +2,8 @@ strategy:
 
     # Amount to invest by each `asset` and `exchange`.
   - amount: 50
-    quote_asset: usdt
+    base_asset: usdt
     assets:
       - btc
-    exchanges:
-      - binance
-
-    # Amount to invest by each `asset` and `exchange`.
-  - amount: 10000
-    quote_asset: usdt
-    assets:
-      - eth
-      - ltc
     exchanges:
       - binance
