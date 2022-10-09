@@ -11,8 +11,7 @@ class Strategy:
     Generic class to create DCA strategies.
     """
 
-    def __init__(self, period, amount, quote_asset, assets, exchanges) -> None:
-        self.period = period
+    def __init__(self, amount, quote_asset, assets, exchanges) -> None:
         self.amount = amount
         self.quote_asset = quote_asset
         self.assets = assets
@@ -27,7 +26,7 @@ class Strategy:
         return ["{}/{}".format(self.quote_asset, base) for base in self.assets]
 
     def __str__(self) -> str:
-        return f"strategy-{self.period}-{self.amount}"
+        return f"strategy-{self.amount}"
 
 
 class Exchange:
@@ -87,7 +86,6 @@ if __name__ == "__main__":
 
     strategies = [
         Strategy(
-            period=strategy["period"],
             amount=strategy["amount"],
             quote_asset=strategy["quote_asset"],
             assets=strategy["assets"],
