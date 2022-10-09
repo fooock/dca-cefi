@@ -8,3 +8,11 @@ strategy:
       - eth
     exchanges:
       - binance
+
+  - amount: 30
+    base_asset: busd
+    assets:
+      - ltc
+      - bnb
+    exchanges:
+      - binance

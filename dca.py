@@ -4,6 +4,7 @@ import logging
 import tenacity
 import yaml
 
+from concurrent.futures.thread import ThreadPoolExecutor
 from tenacity import RetryError, stop_after_attempt, wait_fixed
 from yaml.loader import SafeLoader
 
@@ -116,7 +117,7 @@ class Exchange:
         return hash(self.name)
 
 
-class Runner:
+class StrategyRunner:
     """
     Runner to execute strategies.
     """
@@ -171,7 +172,8 @@ class Runner:
                 logging.error(
                     f"Unable to retrieve ticker for symbol {pair} in exchange {exchange.name} ('{strategy}')"
                 )
-                return
+                # Here we continue in the loop since we need to check each pair
+                continue
             logging.info(
                 f"Ask price for {pair} is {ticker['ask']} {strategy.base_asset}"
             )
@@ -197,7 +199,7 @@ if __name__ == "__main__":
 
     # Configure basic logger
     logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(message)s",
+        format="%(asctime)s [%(threadName)s] [%(levelname)s] - %(message)s",
         level=logging.INFO,
         datefmt="%m/%d/%Y %I:%M:%S",
     )
@@ -240,10 +242,11 @@ if __name__ == "__main__":
     exchanges = list(set(exchanges))
     logging.info(f"Created {len(exchanges)} exchanges: {exchanges}")
 
-    runner = Runner()
-    for strategy in strategies:
-        for exchange in exchanges:
-            if exchange.name not in strategy.exchanges:
-                continue
-            # Execute strategy in this exchange
-            runner.run(strategy, exchange)
+    runner = StrategyRunner()
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        for strategy in strategies:
+            for exchange in exchanges:
+                if exchange.name not in strategy.exchanges:
+                    continue
+                # Execute strategy in this exchange
+                executor.submit(runner.run, strategy, exchange)
