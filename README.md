@@ -104,3 +104,7 @@ binance:
   apiKey: dead
   secret: beef
 ```
+
+## Donate
+
+If you want to be a supporter, you can use this address in any EVM network to send me donations `0x63335aA5efbfB9D591B047354DBb012ce1CAfc0A`.
