@@ -3,7 +3,8 @@
 >Dollar cost averaging bot for centralized exchanges.
 
 This is a simple script to buy fixed amounts of some cryptocurrency assets in your preferred
-exchanges. You can run multiple strategies using the same bot.
+exchanges. It supports any exchange available in [`CCXT`](https://github.com/ccxt/ccxt) (more than 100). 
+You can run multiple strategies using the same bot.
 
 A strategy is a file where we define the list of buy actions our bot is going to execute. See for example
 the file [`strategy.yaml`](strategy.yaml) for more information. As a summary, each strategy will 
