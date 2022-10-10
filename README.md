@@ -28,6 +28,7 @@ docker run -v $(pwd):/app:ro fooock/dca-cefi --strategy strategy.yaml --keys key
 ```
 
 >It is super important to mount the directory where your strategy and keys are located.
+>The `--test` flag is only used in sandbox environments when the exchange supports it.
 
 ## How it works?
 
@@ -37,6 +38,7 @@ See the following strategy file as an example to undestand better the bot functi
 
 ```yaml
 strategy:
+  # Strategy 1
   - amount: 50
     base_asset: usdt
     assets:
@@ -44,6 +46,7 @@ strategy:
       - eth
     exchanges:
       - binance
+  # Strategy 2
   - amount: 20
     base_asset: busd
     assets:
@@ -52,7 +55,12 @@ strategy:
       - bitso
 ```
 
-Our bot will execute two strategies in paralell. The first one:
+Our bot will execute two strategies in paralell.
+
+>Note that our strategy will interact with two exchanges, so we need to create the required API keys and
+>secrets to be able to recover information from our account.
+
+### Strategy one:
 
 | Field        	| Value                                                        	|
 |--------------	|--------------------------------------------------------------------	|
@@ -63,7 +71,7 @@ Our bot will execute two strategies in paralell. The first one:
 
 This first strategy will use a total of `100 USDT` to buy `BTC` and `ETH` from Binance (`50` each one).
 
-The second strategy:
+### Strategy two:
 
 | Field        	| Value                                                        	|
 |--------------	|--------------------------------------------------------------------	|
@@ -74,8 +82,11 @@ The second strategy:
 
 This second strategy will use a total of `20 BUSD` to buy `BTC` from Bitso. 
 
->Note that our strategy will interact with two exchanges, so we need to create the required API keys and
->secrets to be able to recover information from our account.
+## Exchange keys
+
+To be able to create orders in the selected exchanges you need to create your API keys and secrets. This
+is something that needs to be kept private, that's why you need to define it in a separate file from the strategy.
+Based on the exchange, the method can be different, so check your Exchange documentation.
 
 In order to define the keys used by the exchanges we need to define it using a predefined format, the
 exchange name as a key and `apiKey` and `secret` with the values provided by the exchange. For example:
@@ -85,11 +96,3 @@ binance:
   apiKey: dead
   secret: beef
 ```
-
-When you have all things defined just execute it:
-
-```
-(dca-cefi-env) $ python dca.py --strategy strategy.yaml --keys keys.yaml --test
-```
-
->Note the flag `--test` is only used in sandbox environments.
