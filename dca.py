@@ -1,4 +1,5 @@
 import argparse
+from tkinter.messagebox import NO
 import ccxt
 import logging
 import tenacity
@@ -18,7 +19,8 @@ class Strategy:
     Generic class to create DCA strategies.
     """
 
-    def __init__(self, amount, base_asset, assets, exchanges) -> None:
+    def __init__(self, period, amount, base_asset, assets, exchanges) -> None:
+        self.period = period
         self.amount = amount
         self.base_asset = base_asset
         self.assets = assets
@@ -33,7 +35,7 @@ class Strategy:
         return ["{}/{}".format(quote, self.base_asset) for quote in self.assets]
 
     def __str__(self) -> str:
-        return f"strategy-{self.amount}"
+        return f"strategy-{self.period}-{self.amount}"
 
 
 class Exchange:
@@ -52,6 +54,22 @@ class Exchange:
         self.name = name
         self.exchange = exchange_class(keys)
         self.exchange.set_sandbox_mode(test)
+
+    def get_buy_orders(self, pair: str) -> dict:
+        """
+        Retrieve my buy trades for the given pair.
+        """
+        for attempt in tenacity.Retrying(
+            stop=stop_after_attempt(NUMBER_OF_NETWORK_ATTEMPTS),
+            wait=wait_fixed(RETRY_WAIT_TIME_SECONDS),
+        ):
+            with attempt:
+                logging.info(
+                    f"#{attempt.retry_state.attempt_number} Trying to retrieve buy trades for {pair}"
+                )
+                orders = self.exchange.fetch_my_trades(symbol=pair)
+                # This is to retrieve only buy orders
+                return [order for order in orders if order["info"]["isBuyer"] is True]
 
     def get_balances(self) -> dict:
         """
@@ -114,8 +132,11 @@ class StrategyRunner:
     Runner to execute strategies.
     """
 
-    def __init__(self, no_balance_available_callback=None) -> None:
+    def __init__(
+        self, no_balance_available_callback=None, should_execute_buy_callback=None
+    ) -> None:
         self.no_balance_available_callback = no_balance_available_callback
+        self.should_execute_buy_callback = should_execute_buy_callback
 
     def run(self, strategy: Strategy, exchange: Exchange):
         # Retrieve balances in order to execute this strategy
@@ -164,6 +185,29 @@ class StrategyRunner:
         # Lets go to create orders
         orders = []
         for pair in order_pairs_to_create:
+            # Retrieve last trades to use it to decide if we should buy
+            # or not. This operation is completely optional and strategy
+            # can continue its execution without it. Just take into account
+            # that if you don't define a `should_execute_buy_callback`
+            # you have a risk of emptying your account.
+            try:
+                created_orders = exchange.get_buy_orders(pair)
+                logging.info(f"Found {len(created_orders)} buy orders from {exchange}")
+            except RetryError:
+                pass
+
+            # This is a way to create custom buy logic based on some parameters
+            # like past trades or any other type of condition.
+            if (
+                self.should_execute_buy_callback is not None
+                and not self.should_execute_buy_callback(
+                    pair, exchange.name, strategy.period, created_orders
+                )
+            ):
+                logging.info(
+                    f"Avoid creating buy order for {pair} in exchange {exchange}"
+                )
+                continue
             # Retrieve ticker price for the current pair in order
             # to calculate the amount of unots to buy.
             try:
@@ -183,7 +227,7 @@ class StrategyRunner:
             try:
                 order = order = exchange.buy(pair, amount_to_buy)
                 logging.info(
-                    f"Order {order['id']} / symbol {pair} / amount {amount_to_buy} / price {order['price']} / status {order['status']} / {exchange}"
+                    f"Order {order['id']}-{exchange} / symbol {pair} / amount {amount_to_buy} / price {order['price']} / status {order['status']}"
                 )
                 orders.append(order)
             except RetryError:
@@ -205,6 +249,21 @@ def no_balance_available(exchange: str, current: float, expected: float, asset: 
     logging.error(
         f"Exchange {exchange} has {current} {asset} but expected {expected} {asset}"
     )
+
+
+def should_create_buy_order(
+    pair: str, exchange: str, period: str, orders: dict
+) -> bool:
+    """
+    Callback to implement custom logic to know when to buy the given symbol in the
+    current exchange.
+    """
+    logging.info(
+        f"Checking if we can create buy order for symbol {pair} in exchange {exchange} ({period})"
+    )
+    if orders is None or len(orders) == 0:
+        return False
+    return True
 
 
 if __name__ == "__main__":
@@ -232,6 +291,7 @@ if __name__ == "__main__":
 
     strategies = [
         Strategy(
+            period=strategy["period"],
             amount=int(strategy["amount"]),
             base_asset=strategy["base_asset"].upper(),
             assets=[asset.upper() for asset in strategy["assets"]],
@@ -254,7 +314,10 @@ if __name__ == "__main__":
     exchanges = list(set(exchanges))
     logging.info(f"Created {len(exchanges)} exchanges: {exchanges}")
 
-    runner = StrategyRunner(no_balance_available_callback=no_balance_available)
+    runner = StrategyRunner(
+        no_balance_available_callback=no_balance_available,
+        should_execute_buy_callback=should_create_buy_order,
+    )
     with ThreadPoolExecutor(max_workers=5) as executor:
         for strategy in strategies:
             for exchange in exchanges:

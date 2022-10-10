@@ -1,9 +1,9 @@
 strategy:
     # Amount to invest by each `asset` and `exchange`.
   - amount: 50
+    period: monthly
     base_asset: usdt
     assets:
       - btc
-      - eth
     exchanges:
       - binance
