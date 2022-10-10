@@ -60,7 +60,7 @@ Our bot will execute two strategies in paralell.
 >Note that our strategy will interact with two exchanges, so we need to create the required API keys and
 >secrets to be able to recover information from our account.
 
-### Strategy one:
+#### Strategy one:
 
 | Field        	| Value                                                        	|
 |--------------	|--------------------------------------------------------------------	|
@@ -71,7 +71,7 @@ Our bot will execute two strategies in paralell.
 
 This first strategy will use a total of `100 USDT` to buy `BTC` and `ETH` from Binance (`50` each one).
 
-### Strategy two:
+#### Strategy two:
 
 | Field        	| Value                                                        	|
 |--------------	|--------------------------------------------------------------------	|
