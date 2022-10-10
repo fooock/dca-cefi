@@ -17,6 +17,14 @@ contain the following info:
 | `assets`     	| List of cryptocurrencies to buy                                       |
 | `exchanges`  	| List of exchanges used to buy assets                               	|
 
+### Features
+
+* Supports more than 100 exchanges.
+* Buy multiple cryptocurrencies at once.
+* You can be notified when no funds are available in the exchange by implementing the [`no_balance_available_callback`](https://github.com/fooock/dca-cefi/blob/main/dca.py#L243) method.
+* You can implement your own logic to know when to create buy orders by implementing the [`should_create_buy_order_callback`](https://github.com/fooock/dca-cefi/blob/main/dca.py#L254) method.
+* The script is flexible enough to be run by hand, Docker, cronjob, or whatever you want.
+
 ## Install
 
 The best way to run this script is by using Docker. Just pull the image and run it with 
