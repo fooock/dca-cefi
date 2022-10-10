@@ -103,7 +103,7 @@ class Exchange:
         return False
 
     def __repr__(self) -> str:
-        return self.exchange.name
+        return self.exchange.name.capitalize()
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -123,12 +123,12 @@ class StrategyRunner:
             balances = exchange.get_balances()
         except RetryError:
             logging.error(
-                f"Unable to retrieve account balance for exchange {exchange.name} ('{strategy}')"
+                f"Unable to retrieve account balance for exchange {exchange} ('{strategy}')"
             )
             return
         quote_balance = balances[strategy.base_asset]["free"]
         logging.info(
-            f"Available balance in {exchange.name} for '{strategy}' is {quote_balance} {strategy.base_asset}"
+            f"Available balance in {exchange} for '{strategy}' is {quote_balance} {strategy.base_asset}"
         )
         # We are unable to execute the strategy because we don't have available
         # balance.
@@ -170,12 +170,12 @@ class StrategyRunner:
                 ticker = exchange.get_price(pair)
             except RetryError:
                 logging.error(
-                    f"Unable to retrieve ticker for symbol {pair} in exchange {exchange.name} ('{strategy}')"
+                    f"Unable to retrieve ticker for symbol {pair} in exchange {exchange} ('{strategy}')"
                 )
                 # Here we continue in the loop since we need to check each pair
                 continue
             logging.info(
-                f"Ask price for {pair} is {ticker['ask']} {strategy.base_asset}"
+                f"Ask price for {pair} is {ticker['ask']} {strategy.base_asset} in {exchange}"
             )
             amount_to_buy = "{:.8f}".format(strategy.amount / ticker["ask"])
 
@@ -183,17 +183,17 @@ class StrategyRunner:
             try:
                 order = order = exchange.buy(pair, amount_to_buy)
                 logging.info(
-                    f"Order {order['id']} / symbol {pair} / amount {amount_to_buy} / price {order['price']} / status {order['status']}"
+                    f"Order {order['id']} / symbol {pair} / amount {amount_to_buy} / price {order['price']} / status {order['status']} / {exchange}"
                 )
                 orders.append(order)
             except RetryError:
                 logging.error(
-                    f"Unable to create order for symbol {pair} with amount {amount_to_buy} in exchange {exchange.name} ('{strategy}')"
+                    f"Unable to create order for symbol {pair} with amount {amount_to_buy} in exchange {exchange} ('{strategy}')"
                 )
                 # Continue with the next pair
                 continue
 
-        logging.info(f"Created {len(orders)} orders for '{strategy}'")
+        logging.info(f"Created {len(orders)} orders for '{strategy}' in {exchange}")
 
 
 def no_balance_available(exchange: str, current: float, expected: float, asset: str):
