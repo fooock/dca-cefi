@@ -16,6 +16,7 @@ contain the following info:
 | `base_asset` 	| The asset we are going to use as a base currency                   	|
 | `assets`     	| List of cryptocurrencies to buy                                       |
 | `exchanges`  	| List of exchanges used to buy assets                               	|
+| `period`  	  | The period where this strategy should be executed. `monthly`, `weekly` or `daily` |
 
 #### Features
 
@@ -25,6 +26,7 @@ contain the following info:
 * You can implement your own logic to know when to create buy orders by implementing the [`should_create_buy_order_callback`](https://github.com/fooock/dca-cefi/blob/main/dca.py#L260) method.
 * Be notified when an order is created by implementing the [`on_order_created_callback`](https://github.com/fooock/dca-cefi/blob/main/dca.py#L275)  method.
 * The script is flexible enough to be run by hand, Docker, cronjob, or whatever you want.
+* Execute buy orders when the period is met.
 
 ## Install
 
@@ -49,6 +51,7 @@ See the following strategy file as an example to undestand better the bot functi
 strategy:
   # Strategy 1
   - amount: 50
+    period: monthly
     base_asset: usdt
     assets:
       - btc
@@ -57,6 +60,7 @@ strategy:
       - binance
   # Strategy 2
   - amount: 20
+    period: weekly
     base_asset: busd
     assets:
       - btc
@@ -69,6 +73,10 @@ Our bot will execute two strategies in paralell.
 >Note that our strategy will interact with two exchanges, so we need to create the required API keys and
 >secrets to be able to recover information from our account.
 
+Defining the strategy period doesn't mean the script will execute automatically during that period. It is your responsibility
+to configure the script and how it will be executed. The `period` is just a measure to avoid buying the
+asset when is not required (and avoid emptying your account `base_asset` balance by mistake).
+
 #### Strategy one:
 
 | Field        	| Value                                                        	|
@@ -77,8 +85,10 @@ Our bot will execute two strategies in paralell.
 | `base_asset` 	| `USDT`                   	|
 | `assets`     	| `BTC`, `ETH`                                       |
 | `exchanges`  	| `binance`                              	|
+| `period`  	| `monthly`                              	|
 
-This first strategy will use a total of `100 USDT` to buy `BTC` and `ETH` from Binance (`50` each one).
+This first strategy will use a total of `100 USDT` to buy `BTC` and `ETH` from Binance (`50` each one)
+each month.
 
 #### Strategy two:
 
@@ -88,8 +98,9 @@ This first strategy will use a total of `100 USDT` to buy `BTC` and `ETH` from B
 | `base_asset` 	| `BUSD`                   	|
 | `assets`     	| `BTC`                                       |
 | `exchanges`  	| `bitso`                              	|
+| `period`  	| `weekly`                              	|
 
-This second strategy will use a total of `20 BUSD` to buy `BTC` from Bitso. 
+This second strategy will use a total of `20 BUSD` to buy `BTC` from Bitso each week. 
 
 ## Exchange keys
 
