@@ -1,5 +1,4 @@
 import argparse
-from tkinter.messagebox import NO
 import ccxt
 import logging
 import tenacity
@@ -133,10 +132,14 @@ class StrategyRunner:
     """
 
     def __init__(
-        self, no_balance_available_callback=None, should_execute_buy_callback=None
+        self,
+        on_balance_no_available_callback=None,
+        should_execute_buy_callback=None,
+        on_order_created_callback=None,
     ) -> None:
-        self.no_balance_available_callback = no_balance_available_callback
+        self.on_balance_no_available_callback = on_balance_no_available_callback
         self.should_execute_buy_callback = should_execute_buy_callback
+        self.on_order_created_callback = on_order_created_callback
 
     def run(self, strategy: Strategy, exchange: Exchange):
         # Retrieve balances in order to execute this strategy
@@ -158,8 +161,8 @@ class StrategyRunner:
                 f"We can't execute '{strategy}' since available funds are {quote_balance} and required amount is {strategy.amount}"
             )
             # Use our callback to do operations when this happens
-            if self.no_balance_available_callback is not None:
-                self.no_balance_available_callback(
+            if self.on_balance_no_available_callback is not None:
+                self.on_balance_no_available_callback(
                     exchange.name, quote_balance, strategy.amount, strategy.base_asset
                 )
             return
@@ -230,6 +233,9 @@ class StrategyRunner:
                     f"Order {order['id']}-{exchange} / symbol {pair} / amount {amount_to_buy} / price {order['price']} / status {order['status']}"
                 )
                 orders.append(order)
+                # Notify the created order to callback if available
+                if self.on_order_created_callback is not None:
+                    self.on_order_created_callback(exchange.name, order)
             except RetryError:
                 logging.error(
                     f"Unable to create order for symbol {pair} with amount {amount_to_buy} in exchange {exchange} ('{strategy}')"
@@ -240,7 +246,7 @@ class StrategyRunner:
         logging.info(f"Created {len(orders)} orders for '{strategy}' in {exchange}")
 
 
-def no_balance_available(exchange: str, current: float, expected: float, asset: str):
+def on_balance_no_available(exchange: str, current: float, expected: float, asset: str):
     """
     Callback to be notified when no funds are available in the strategy exchange.
     This can be used to send email/telegram notification and top-up the exchange
@@ -264,6 +270,13 @@ def should_create_buy_order(
     if orders is None or len(orders) == 0:
         return False
     return True
+
+
+def on_order_created(exchange: str, order: dict):
+    """
+    Callback to be notified when order is created in exchange.
+    """
+    pass
 
 
 if __name__ == "__main__":
@@ -315,7 +328,8 @@ if __name__ == "__main__":
     logging.info(f"Created {len(exchanges)} exchanges: {exchanges}")
 
     runner = StrategyRunner(
-        no_balance_available_callback=no_balance_available,
+        on_balance_no_available_callback=on_balance_no_available,
+        on_order_created_callback=on_order_created,
         should_execute_buy_callback=should_create_buy_order,
     )
     with ThreadPoolExecutor(max_workers=5) as executor:

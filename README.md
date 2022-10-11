@@ -21,8 +21,9 @@ contain the following info:
 
 * Supports more than 100 exchanges.
 * Buy multiple cryptocurrencies at once.
-* You can be notified when no funds are available in the exchange by implementing the [`no_balance_available_callback`](https://github.com/fooock/dca-cefi/blob/main/dca.py#L243) method.
-* You can implement your own logic to know when to create buy orders by implementing the [`should_create_buy_order_callback`](https://github.com/fooock/dca-cefi/blob/main/dca.py#L254) method.
+* You can be notified when no funds are available in the exchange by implementing the [`on_balance_no_available_callback`](https://github.com/fooock/dca-cefi/blob/main/dca.py#L249) method.
+* You can implement your own logic to know when to create buy orders by implementing the [`should_create_buy_order_callback`](https://github.com/fooock/dca-cefi/blob/main/dca.py#L260) method.
+* Be notified when an order is created by implementing the [`on_order_created`](https://github.com/fooock/dca-cefi/blob/main/dca.py#L275)  method.
 * The script is flexible enough to be run by hand, Docker, cronjob, or whatever you want.
 
 ## Install
