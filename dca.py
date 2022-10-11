@@ -1,4 +1,5 @@
 import argparse
+import re
 import ccxt
 import json
 import logging
@@ -6,6 +7,7 @@ import tenacity
 import yaml
 
 from concurrent.futures.thread import ThreadPoolExecutor
+from datetime import datetime
 from tenacity import RetryError, stop_after_attempt, wait_fixed
 from yaml.loader import SafeLoader
 
@@ -196,7 +198,9 @@ class StrategyRunner:
             # you have a risk of emptying your account.
             try:
                 created_orders = exchange.get_buy_orders(pair)
-                logging.info(f"Found {len(created_orders)} buy orders from {exchange}")
+                logging.info(
+                    f"Found {len(created_orders)} buy orders from {exchange} for symbol {pair}"
+                )
             except RetryError:
                 pass
 
@@ -205,11 +209,11 @@ class StrategyRunner:
             if (
                 self.should_execute_buy_callback is not None
                 and not self.should_execute_buy_callback(
-                    pair, exchange.name, strategy.period, created_orders
+                    pair, exchange.name, strategy.period
                 )
             ):
                 logging.info(
-                    f"Avoid creating buy order for {pair} in exchange {exchange}"
+                    f"Avoid creating buy order for {pair} in exchange {exchange} ('{strategy}')"
                 )
                 continue
             # Retrieve ticker price for the current pair in order
@@ -258,9 +262,7 @@ def on_balance_no_available(exchange: str, current: float, expected: float, asse
     )
 
 
-def should_create_buy_order(
-    pair: str, exchange: str, period: str, orders: dict
-) -> bool:
+def should_create_buy_order(pair: str, exchange: str, period: str) -> bool:
     """
     Callback to implement custom logic to know when to buy the given symbol in the
     current exchange.
@@ -268,8 +270,52 @@ def should_create_buy_order(
     logging.info(
         f"Checking if we can create buy order for symbol {pair} in exchange {exchange} ({period})"
     )
-    if orders is None or len(orders) == 0:
-        return False
+    # Load created orders to verify if we need to create a new one based
+    # on the given period.
+    orders = []
+    with open("orders.json", "r") as f:
+        for line in f:
+            orders.append(json.loads(line.strip()))
+    # If we don't have any created order then allow the creation
+    # of a new one.
+    if len(orders) == 0:
+        return True
+
+    current_date = datetime.now()
+    for order in orders:
+        order_date = datetime.strptime(order["datetime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+        # Monthly period
+        if (
+            period == "monthly"
+            and current_date.month == order_date.month
+            and current_date.year == order_date.year
+            and order["exchange"] == exchange
+            and order["symbol"] == pair
+        ):
+            return False
+        # Daily period
+        if (
+            period == "daily"
+            and current_date.day == order_date.day
+            and current_date.month == order_date.month
+            and current_date.year == order_date.year
+            and order["exchange"] == exchange
+            and order["symbol"] == pair
+        ):
+            return False
+        # Weekly period
+        current_week = current_date.isocalendar().week
+        order_week = order_date.isocalendar().week
+        if (
+            period == "weekly"
+            and current_week == order_week
+            and current_date.month == order_date.month
+            and current_date.year == order_date.year
+            and order["exchange"] == exchange
+            and order["symbol"] == pair
+        ):
+            return False
+    # If no condition is met create the order
     return True
 
 
