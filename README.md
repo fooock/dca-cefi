@@ -27,6 +27,7 @@ contain the following info:
 * Be notified when an order is created by implementing the [`on_order_created_callback`](https://github.com/fooock/dca-cefi/blob/main/dca.py#L275)  method.
 * The script is flexible enough to be run by hand, Docker, cronjob, or whatever you want.
 * Execute buy orders when the period is met.
+* Save all executed buy orders from all exchanges in a file called `orders.json`.
 
 ## Install
 

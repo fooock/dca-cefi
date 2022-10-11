@@ -1,5 +1,4 @@
 import argparse
-import re
 import ccxt
 import json
 import logging
