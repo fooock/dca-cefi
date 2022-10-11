@@ -1,5 +1,6 @@
 import argparse
 import ccxt
+import json
 import logging
 import tenacity
 import yaml
@@ -274,9 +275,17 @@ def should_create_buy_order(
 
 def on_order_created(exchange: str, order: dict):
     """
-    Callback to be notified when order is created in exchange.
+    Callback to be notified when order is created in exchange. By default
+    this method writes all orders to a file called `orders.json`.
     """
-    pass
+    # This is to be able to identify what orders belong to an echange.
+    order["exchange"] = exchange
+
+    # Save data to a file to be able to check if we should
+    # create a new order based on the strategy `period`.
+    with open("orders.json", "a", encoding="utf-8") as f:
+        json.dump(order, f, ensure_ascii=False)
+        f.write("\n")
 
 
 if __name__ == "__main__":
