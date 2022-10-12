@@ -13,6 +13,7 @@ from yaml.loader import SafeLoader
 
 NUMBER_OF_NETWORK_ATTEMPTS = 5
 RETRY_WAIT_TIME_SECONDS = 1
+CREATED_ORDERS_FILE_NAME = "orders.json"
 
 
 class Strategy:
@@ -190,11 +191,8 @@ class StrategyRunner:
         # Lets go to create orders
         orders = []
         for pair in order_pairs_to_create:
-            # Retrieve last trades to use it to decide if we should buy
-            # or not. This operation is completely optional and strategy
-            # can continue its execution without it. Just take into account
-            # that if you don't define a `should_execute_buy_callback`
-            # you have a risk of emptying your account.
+            # Show the number of orders our account has for this symbol.
+            # Just for informational purposes.
             try:
                 created_orders = exchange.get_buy_orders(pair)
                 logging.info(
@@ -203,18 +201,6 @@ class StrategyRunner:
             except RetryError:
                 pass
 
-            # This is a way to create custom buy logic based on some parameters
-            # like past trades or any other type of condition.
-            if (
-                self.should_execute_buy_callback is not None
-                and not self.should_execute_buy_callback(
-                    pair, exchange.name, strategy.period
-                )
-            ):
-                logging.info(
-                    f"Avoid creating buy order for {pair} in exchange {exchange} ('{strategy}')"
-                )
-                continue
             # Retrieve ticker price for the current pair in order
             # to calculate the amount of unots to buy.
             try:
@@ -229,6 +215,19 @@ class StrategyRunner:
                 f"Ask price for {pair} is {ticker['ask']} {strategy.base_asset} in {exchange}"
             )
             amount_to_buy = "{:.8f}".format(strategy.amount / ticker["ask"])
+
+            # This is a way to create custom buy logic based on some parameters
+            # like past trades or any other type of condition.
+            if (
+                self.should_execute_buy_callback is not None
+                and not self.should_execute_buy_callback(
+                    exchange.name, strategy.period, ticker
+                )
+            ):
+                logging.info(
+                    f"Avoid creating buy order for {pair} in exchange {exchange} ('{strategy}')"
+                )
+                continue
 
             # Try to create the buy order
             try:
@@ -261,18 +260,18 @@ def on_balance_no_available(exchange: str, current: float, expected: float, asse
     )
 
 
-def should_create_buy_order(pair: str, exchange: str, period: str) -> bool:
+def should_create_buy_order(exchange: str, period: str, ticker: dict) -> bool:
     """
     Callback to implement custom logic to know when to buy the given symbol in the
     current exchange.
     """
     logging.info(
-        f"Checking if we can create buy order for symbol {pair} in exchange {exchange} ({period})"
+        f"Checking if we can create buy order for symbol {ticker['symbol']} in exchange {exchange} ({period})"
     )
     # Load created orders to verify if we need to create a new one based
     # on the given period.
     orders = []
-    with open("orders.json", "r") as f:
+    with open(CREATED_ORDERS_FILE_NAME, "r") as f:
         for line in f:
             orders.append(json.loads(line.strip()))
     # If we don't have any created order then allow the creation
@@ -289,7 +288,7 @@ def should_create_buy_order(pair: str, exchange: str, period: str) -> bool:
             and current_date.month == order_date.month
             and current_date.year == order_date.year
             and order["exchange"] == exchange
-            and order["symbol"] == pair
+            and order["symbol"] == ticker["symbol"]
         ):
             return False
         # Daily period
@@ -299,7 +298,7 @@ def should_create_buy_order(pair: str, exchange: str, period: str) -> bool:
             and current_date.month == order_date.month
             and current_date.year == order_date.year
             and order["exchange"] == exchange
-            and order["symbol"] == pair
+            and order["symbol"] == ticker["symbol"]
         ):
             return False
         # Weekly period
@@ -311,7 +310,7 @@ def should_create_buy_order(pair: str, exchange: str, period: str) -> bool:
             and current_date.month == order_date.month
             and current_date.year == order_date.year
             and order["exchange"] == exchange
-            and order["symbol"] == pair
+            and order["symbol"] == ticker["symbol"]
         ):
             return False
     # If no condition is met create the order
@@ -328,7 +327,7 @@ def on_order_created(exchange: str, order: dict):
 
     # Save data to a file to be able to check if we should
     # create a new order based on the strategy `period`.
-    with open("orders.json", "a", encoding="utf-8") as f:
+    with open(CREATED_ORDERS_FILE_NAME, "a", encoding="utf-8") as f:
         json.dump(order, f, ensure_ascii=False)
         f.write("\n")
 
